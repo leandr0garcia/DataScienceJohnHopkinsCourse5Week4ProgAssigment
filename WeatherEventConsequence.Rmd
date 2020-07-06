@@ -1,0 +1,307 @@
+---
+title: "Weather Events that can cause public health and economic problems"
+author:
+- affiliation: Student of the DataScience specialization in the John Hopkings University
+  name: Leandro GARCIA
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+# SYPNOSIS
+
+Our aim with this report is to show the most significant events presented in the weather report that can be the cause of public health and/or economic problems. Our hypothesis is that mostly when on weather event happens, it will produce a direct impact in the economy or in the health sector. To study this, we have use the  U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database, and taking the years 1950 and 2011 for study on the relationship between events and their impacts in Health (fatalities and injuries) and Economic sectors (Losts by weather events). Our study shows the most significant events that when they are present, an economical depression or/and an increase of resources in the health problem happen.
+
+
+# DATA PROCESSING
+From the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database, we download:
+
+- [The Storm data from the year 1950 to 2011](./data/repdata_data_StormData.csv.bz2) : 
+- [National Weather Service Storm Data Documentation](./doc/repdata_peer2_doc_pd01016005curr.pdf)
+- [National Weather Service Storm Data Documentation](./doc/repdata_peer2_doc_NCDC Storm Events-FAQ Page.pdf)
+
+## Reading the weather data between 1950 and 2011
+
+```{r message=FALSE, warning=FALSE}
+Sys.setlocale("LC_ALL","English")
+file_url <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
+data_file <- "./data/repdata_data_StormData.csv.bz2"
+if(!dir.exists("./data")) {dir.create("./data")}
+download.file(url = file_url, destfile = data_file, mode = "wb")
+library(R.utils)
+data_df <- data.table::fread(file = data_file, header = TRUE, sep = ",", na.strings = "") # Load the data in the data frame
+    
+
+``` 
+
+After reading, we check the dimensions (there are 902.297 observations and 37 features) and ..
+
+```{r warning=FALSE}
+dim(data_df)
+```
+
+
+and  the first observation of this dataset.
+
+``` {r} 
+
+head(data_df)
+
+```
+
+Names of the indicators (features) of this dataset
+
+```{r}
+
+names(data_df)
+
+```
+
+
+## Generating auxiliary data for study
+
+For this study, we will focus on the following indicators (columns):
+
+SECTOR     | Indicator            | Description
+-----------|----------------------|---------------
+Health     | FATALITIES           | Fatalities caused by Event
+Health     | INJURIES             | Injuries caused by Event
+Economical | PROPDMG & PROPDMGEXP | Property Damages caused by Event
+Economical | CROPDMG & CROPDMGEXP | Crop Damages caused by  Event
+
+*NOTE* that we have included 2 indicators as one, as the 'EXP' is a complement that modifies the magnitude of the damage (_Please refer to the documentation, repdata_peer2_doc_pd01016005curr.pdf, page 12_)
+
+As We will use EVTYPE column to know the type of event, we will perform an inspection of the data consistancy. If there is any NAs, we will replace as "UNKNOWN".
+
+``` {r}
+summary(data_df$EVTYPE)
+```
+
+```{r}
+
+data.frame(unique(data_df$EVTYPE))
+
+```
+
+It looks complete, so no transformation will be performed.
+
+
+### Generating HEALTH_IMPACT_INDICATOR column
+
+HEALTH_IMPACT_INDICATOR is a new column that we create, to  be used as a reference to rank the consequences of a weather event, as we consider that not all the events have the same impact in the health sector. 
+
+#### VERIFYING OUR DATA CONSISTENCY
+Before generating we crosscheck if NAs are present in the data. In this case, any NA will be replaced by 0. This is to avoid changes on the data trend or incorporating non-existent data in events as it can change the statistical descriptor of our events.
+
+``` {r}
+print("FATALITIES Summary:")
+summary(data_df$FATALITIES)
+print("INJURIES Summary:")
+summary(data_df$INJURIES)
+```
+
+
+#### CREATING OUR NEW COLUMN
+No NA's found, so we proceed to create our new columnd HEALTH_IMPACT_INDICATOR.
+This column is the sum of FATALITIES and INJURIES with a weight relatively to the IMPACT,  WEIGHT_FATALITIES = 1 and WEIGHT_INJURIES = 0.8 (as we consider FATALITIES > INJURIES). 
+
+        HEALTH_IMPACT_INDICATOR = FATALITIES_WEIGHTED + INJURIES_WEIGHTED
+        
+        FATALITIES_WEIGHTED = FATALITIES * WEIGHT_FATALITIES
+        
+        INJURIES_WEIGHTED = INJURIES * WEIGHT_INJURIES
+        
+FATALITIES_WEIGHTED = FATALITIES * WEIGHT_FATALITIES        
+
+```{r warning=FALSE}
+
+WEIGHT_FATALITIES <- 1
+data_df$FATALITIES_WEIGHTED <- (data_df$FATALITIES * WEIGHT_FATALITIES) 
+
+```
+
+
+INJURIES_WEIGHTED = INJURIES * WEIGHT_INJURIES
+
+```{r warning=FALSE}
+
+WEIGHT_INJURIES <- 0.8
+data_df$INJURIES_WEIGHTED <- (data_df$INJURIES * WEIGHT_INJURIES)
+
+```
+
+HEALTH_IMPACT_INDICATOR = FATALITIES_WEIGHTED + INJURIES_WEIGHTED
+
+```{r warning=FALSE}
+data_df$HEALTH_IMPACT_INDICATOR <- data_df$FATALITIES_WEIGHTED + data_df$INJURIES_WEIGHTED
+
+```
+
+
+### Generating ECONOMICAL_IMPACT_INDICATOR column
+
+ECONOMICAL_IMPACT_INDICATOR is a new column that we create, to  be used as a reference to rank the consequences of a weather event, as we consider the economical impact the sum of all the economical losts caused by event. 
+
+#### VERIFYING OUR DATA CONSISTENCY
+Before generating we crosscheck if NAs are present in the data. In this case, any NA will be replaced by 0. This is to avoid changes on the data trend or incorporating non-existent data in events as it can change the statistical descriptor of our events.
+
+
+``` {r}
+print("PROPDMG Summary:")
+summary(data_df$PROPDMG)
+print("PROPDMGEXP Summary:")
+summary(data_df$PROPDMGEXP)
+print("CROPDMG Summary:")
+summary(data_df$CROPDMG)
+print("CROPDMGEXP Summary:")
+summary(data_df$CROPDMGEXP)
+```
+
+
+#### CREATING OUR NEW COLUMN
+No NA's found, so we proceed to create our new columne ECONOMICAL_IMPACT_INDICATOR.
+This column is the sum of PROPDMG and CROPDMG with its relatively EXP. 
+
+        ECONOMICAL_IMPACT_INDICATOR = PROPDMG_IMPACT + CROPDMG_IMPACT
+        
+        PROPDMG_IMPACT = (PROPDMG  * PROPDMGEXP)
+        
+        CROPDMG_IMPACT = (CROPDMG  * CROPDMGEXP)
+        
+*NOTE* that the EXP for each column is a letter and before using it directly we will have to transform it.
+
+#### Transforming the EXP columns
+
+``` {r}
+print("Values for PROPDMGEXP")
+unique(data_df$PROPDMGEXP)
+print("Values for CROPDMGEXP")
+unique(data_df$CROPDMGEXP)
+
+```
+
+
+
+Replacing NAs for 0 (Exponential of 10^0 = 1)
+``` {r}
+
+# Transforming NAs
+data_df$PROPDMGEXP[is.na(data_df$PROPDMGEXP)] = 0
+data_df$CROPDMGEXP[is.na(data_df$CROPDMGEXP)] = 0
+
+```
+
+
+Using Map Apply (mapply) to map values for each letter
+```{r warning=FALSE}
+# Uniforming the letter to capital letters:
+
+data_df$PROPDMGEXP <- toupper(data_df$PROPDMGEXP)
+data_df$CROPDMGEXP <- toupper(data_df$CROPDMGEXP)
+
+# Mapping letter to EXPONENTS
+data_df$PROPDMGEXP[data_df$PROPDMGEX == "?"] <- 0
+data_df$PROPDMGEXP[data_df$PROPDMGEX == "-"] <- 0
+data_df$PROPDMGEXP[data_df$PROPDMGEX == "+"] <- 0
+data_df$PROPDMGEXP[data_df$PROPDMGEX == "H"] <- 2
+data_df$PROPDMGEXP[data_df$PROPDMGEX == "K"] <- 3
+data_df$PROPDMGEXP[data_df$PROPDMGEX == "M"] <- 6
+data_df$PROPDMGEXP[data_df$PROPDMGEX == "B"] <- 6
+
+data_df$CROPDMGEXP[data_df$CROPDMGEXP == "?"] <- 0
+data_df$CROPDMGEXP[data_df$CROPDMGEXP == "-"] <- 0
+data_df$CROPDMGEXP[data_df$CROPDMGEXP == "+"] <- 0
+data_df$CROPDMGEXP[data_df$CROPDMGEXP == "H"] <- 2
+data_df$CROPDMGEXP[data_df$CROPDMGEXP == "K"] <- 3
+data_df$CROPDMGEXP[data_df$CROPDMGEXP == "M"] <- 6
+data_df$CROPDMGEXP[data_df$CROPDMGEXP == "B"] <- 6
+
+
+# Updating the type of the columns
+data_df$PROPDMGEXP <- as.numeric(data_df$PROPDMGEXP)
+data_df$CROPDMGEXP <- as.numeric(data_df$CROPDMGEXP)
+
+```
+
+
+PROPDMG_IMPACT = (PROPDMG  * PROPDMGEXP)
+        
+```{r warning=FALSE}
+
+data_df$PROPDMG_IMPACT <- data_df$PROPDMG * (10 ^ data_df$PROPDMGEXP)
+
+```
+
+CROPDMG_IMPACT = (CROPDMG  * CROPDMGEXP)
+
+```{r warning=FALSE}
+
+data_df$CROPDMG_IMPACT <- data_df$CROPDMG  * (10 ^ data_df$CROPDMGEXP)
+
+```
+
+ECONOMICAL_IMPACT_INDICATOR = PROPDMG_IMPACT + CROPDMG_IMPACT
+
+```{r warning=FALSE}
+
+data_df$ECONOMICAL_IMPACT_INDICATOR <- data_df$PROPDMG_IMPACT + data_df$CROPDMG_IMPACT 
+
+```
+
+# RESULTS
+
+## Events (as indicated in the \color{red}{\verb|EVTYPE|}EVTYPE variable) are most harmful with respect to population health across the United States
+
+```{r warning=FALSE}
+
+library(dplyr)
+health_df <- select(.data = data_df, EVTYPE, HEALTH_IMPACT_INDICATOR, FATALITIES_WEIGHTED, INJURIES_WEIGHTED) %>% group_by(EVTYPE) %>% summarise_all(.funs = sum)
+health_df <- health_df[order(-health_df$HEALTH_IMPACT_INDICATOR), ]
+
+ranked_events <- head(health_df, n = 10)
+
+ranked_events
+```
+
+In other words...
+
+```{r warning=FALSE}
+library(reshape2)
+to_plot <- select(.data=ranked_events, EVTYPE, FATALITIES_WEIGHTED, INJURIES_WEIGHTED)
+to_plot <- reshape2::melt(data = to_plot, measure.vars = c("FATALITIES_WEIGHTED","INJURIES_WEIGHTED") )
+
+library(ggplot2)
+ggplot(data=to_plot, aes(x=reorder(EVTYPE, -value), y=value, fill=variable)) +
+  geom_bar(stat="identity") + ggtitle("The 10 most dangerous weather eventsfor HEALTH") + ylab("Impact Level") + xlab("Weather Event")  + theme(axis.text.x = element_text(angle=90, hjust=1))
+
+
+```
+
+
+## Events have the greatest economic consequences accross the United States
+
+```{r warning=FALSE}
+
+library(dplyr)
+econ_df <- select(.data = data_df, EVTYPE, ECONOMICAL_IMPACT_INDICATOR, PROPDMG_IMPACT, CROPDMG_IMPACT) %>% group_by(EVTYPE) %>% summarise_all(.funs = sum)
+econ_df <- econ_df[order(-econ_df$ECONOMICAL_IMPACT_INDICATOR), ]
+
+econ_ranked_events <- head(econ_df, n = 10)
+
+econ_ranked_events
+```
+
+In other words...
+
+```{r warning=FALSE}
+library(reshape2)
+to_plot <- select(.data=econ_ranked_events, EVTYPE, PROPDMG_IMPACT, CROPDMG_IMPACT)
+to_plot <- reshape2::melt(data = to_plot, measure.vars = c("PROPDMG_IMPACT","CROPDMG_IMPACT") )
+
+library(ggplot2)
+ggplot(data=to_plot, aes(x=reorder(EVTYPE, -value), y=value, fill=variable)) +
+  geom_bar(stat="identity") + ggtitle("The 10 most dangerous weather events for ECONOMY") + ylab("Lost in $)") + xlab("Weather Event")  + theme(axis.text.x = element_text(angle=90, hjust=1))
+
+
+```

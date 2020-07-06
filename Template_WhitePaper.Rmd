@@ -1,0 +1,29 @@
+---
+title: "Template for White paeprs"
+author:
+- affiliation: John Hopkings University
+  name: Leandro GARCIA DELGADO
+- affiliation: Family University
+  name: My wife
+- affiliation: A school somewhiere
+  name: My daughter
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+fontsize: 11pt
+geometry: margin=1in
+keywords: pandoc, r markdown, knitr
+fontfamily: mathpazo
+thanks: To God, my family and the people in the web that publis stuffs that I don't
+  need
+abstract: In this report we aim to  [SIMILAR TO THE TITLE, describe = to provide statistical
+  descriptor]. Our overall hypothesis is that [YOUR HYPOTHESIS HERE]. To investigate
+  this hypothesis, [HOW YOU DID IT INCLUDING WHAT WERE THE SPECIFIC GROUPS YOU TOOK
+  FOR IT]. From these data, we found that, [FINDINGS - MOST COMMON, EXCEPTIONAL CASES]
+---
+
+
+For more information please check:
+http://svmiller.com/blog/2016/02/svm-r-markdown-manuscript/
